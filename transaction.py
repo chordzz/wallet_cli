@@ -20,8 +20,4 @@ class Transaction:
             "Ttype": self.Ttype
         }
 
-    # def __repr__(self): return (f"Transaction(id={self.id}, wallet_id={self.wallet_id}, amount={self.amount},
-    # status={self.status}, recepient={self.recepient}, created_at={self.created_at}, transaction_type={
-    # self.transaction_type})")
-
-
+    # def __repr__(self): return (f"Transaction(id={self.id}, wallet_id={self.wallet_id}, amount={self.amount}, status={self.status}, recepient={self.recepient}, created_at={self.created_at}, transaction_type={self.transaction_type})")

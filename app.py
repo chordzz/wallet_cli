@@ -86,6 +86,8 @@ class App:
         name = input("Enter your full name, surname first: ")
         email = input("Enter your email address: ")
         phone = input("Enter your phone number: ")
+
+        # check if username already existed in json file
         username = input("Enter your username: ")
         try:
             with open(self.user_db_path, 'r') as file:
@@ -94,6 +96,7 @@ class App:
                     return
         except json.JSONDecodeError:
             pass
+
         password = input("Enter your password: ")
         user_id = random.random() * 999
         created_at = datetime.now().isoformat()
@@ -112,9 +115,7 @@ class App:
         """Function to create a transaction"""
         transaction_id = random.random() * 999999
         created_at = datetime.now().isoformat()
-
         transaction = Transaction(sender, amount, Ttype, transaction_id, created_at, receiver)
-
         self.transactions.append(transaction)
         return transaction
 
@@ -123,13 +124,13 @@ class App:
 
         try:
             self.user = self._create_user()
-        except:
+        except ValueError:
             print("Error creating user, please try again")
             return
         else:
             try:
                 self.wallet = self._create_wallet(self.user.user_id)
-            except:
+            except ValueError:
                 print("Error creating wallet, please try again")
             else:
                 self.user.set_wallet_id(self.wallet.wallet_id)
@@ -182,7 +183,7 @@ class App:
             elif user_input == '7':
                 self._view_profile()
             elif user_input == '8':
-                # stopped from throwing errors for invalid ID number
+                # catch errors for invalid ID number
                 try:
                     id = input("Enter transaction ID: ")
                     self._view_single_transaction(float(id))
@@ -246,10 +247,10 @@ class App:
             self.transactions = [Transaction(**transaction_dict) for transaction_dict in transaction_dicts]
             print("Transactions DB loaded successfully")
         except FileNotFoundError:
-            print("Transactionss DB not found, creating one now")
-            open("data/transactionss.json", 'x').close()
+            print("Transactions DB not found, creating one now")
+            open("data/transactions.json", 'x').close()
         except json.decoder.JSONDecodeError:
-            print("Transactionss DB is empty or corrupted, reinitializing")
+            print("Transactions DB is empty or corrupted, reinitializing")
             print("Reinitialization complete")
 
     def _deposit(self):
