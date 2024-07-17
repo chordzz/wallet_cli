@@ -4,7 +4,6 @@ from transaction import Transaction
 
 import random
 from datetime import datetime
-from pathlib import Path
 import json
 from time import sleep
 
@@ -12,15 +11,13 @@ class App:
     """Main App flow"""
 
     def __init__(self) -> None:
-        # fr = open("data/users.json", 'r')
-        # self.users = json.load(fr)
 
         self.users = []
         self.wallets = []
         self.transactions = []
 
-        self.user = {}
-        self.wallet = {}
+        self.user = None
+        self.wallet = None
 
         self.user_db_path = "data/users.json"
         self.wallet_db_path = "data/wallets.json"
@@ -75,9 +72,9 @@ class App:
     def _authenticate_user(self, input_username, input_password):
         """Authentication function for users"""
         for user in self.users:
-            if user["username"] == input_username and user["password"] == input_password:
+            if user.username == input_username and user.password == input_password:
                 for wallet in self.wallets:
-                    if user["wallet_id"] == wallet["wallet_id"]:
+                    if user.wallet_id == wallet.wallet_id:
                         return [user, wallet]
                 print("\nSomething went wrong with your wallet, consider creating a new account\n")
                 return None
@@ -85,58 +82,54 @@ class App:
         return None
 
     def _create_user(self):
-        new_user = {}
-        new_user["name"] = input("Enter your full name, surname first: ")
-        new_user["email"] = input("Enter your email address: ")
-        new_user["phone"] = input("Enter your phone number: ")
-        new_user["username"] = input("Enter your username: ")
-        new_user["password"] = input("Enter your password: ")
-        new_user["user_id"] = random.random() * 999
-        new_user["created_at"] = datetime.now().isoformat()
-        self.user = new_user
+        name = input("Enter your full name, surname first: ")
+        email = input("Enter your email address: ")
+        phone = input("Enter your phone number: ")
+        username = input("Enter your username: ")
+        password = input("Enter your password: ")
+        user_id = random.random() * 999
+        created_at = datetime.now().isoformat()
+        wallet_id = None
 
-    def _create_wallet(self):
-        new_wallet = {}
-        new_wallet["wallet_id"] = random.random() * 777
-        new_wallet["balance"] = 0
-        new_wallet["user_id"] = self.user["user_id"]
-        new_wallet["created_at"] = datetime.now().isoformat()
-        new_wallet["updated_at"] = datetime.now().isoformat()
-        # self.wallet = Wallet(new_wallet)
-        self.wallet = new_wallet
+        return User(name, email, phone, username, password, user_id, created_at, wallet_id)
+
+    def _create_wallet(self, user):
+        wallet_id = random.random() * 777
+        balance = 0
+        created_at = datetime.now().isoformat()
+        updated_at = datetime.now().isoformat()
+        return Wallet(user, wallet_id, balance, created_at, updated_at)
 
     def _create_transaction(self, sender, amount, Ttype, receiver=""):
         """Function to create a transaction"""
-        new_transaction = {}
-        new_transaction["transaction_id"] = random.random() * 999999
-        new_transaction["created_at"] = datetime.now().isoformat()
-        new_transaction["sender"] = sender
-        new_transaction["receiver"] = receiver
-        new_transaction["amount"] = int(amount)
-        new_transaction["type"] = Ttype
+        transaction_id = random.random() * 999999
+        created_at = datetime.now().isoformat()
 
-        self.transactions.append(new_transaction)
+        transaction = Transaction(sender, amount, Ttype, transaction_id, created_at, receiver)
+
+        self.transactions.append(transaction)
+        return transaction
 
     def _sign_up_flow(self):
         """ The signup process flow of the app"""
 
         try:
-            self._create_user()
+            self.user = self._create_user()
         except:
             print("Error creating user, please try again")
-            # self.app_active = False
+            return
         else:
             try:
-                self._create_wallet()
+                self.wallet = self._create_wallet(self.user.user_id)
             except:
                 print("Error creating wallet, please try again")
             else:
-                self.user["wallet_id"] = self.wallet["wallet_id"]
+                self.user.set_wallet_id(self.wallet.wallet_id)
                 self.wallets.append(self.wallet)
                 self.users.append(self.user)
 
-                self._write_to_db(self.user_db_path, self.users)
-                self._write_to_db(self.wallet_db_path, self.wallets)
+                self._write_to_db(self.user_db_path, [user.to_dict() for user in self.users])
+                self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
 
                 print("User created successfully")
                 print("Wallet created successfully")
@@ -198,14 +191,16 @@ class App:
         # Load in the users DB, create it if it doesn't exist
         try:
             users_fr = open("data/users.json", 'r')
-            self.users = json.load(users_fr)
+            user_dicts = json.load(users_fr)
+            self.users = [User(**user_dict) for user_dict in user_dicts]
             print("User DB loaded successfully")
         except FileNotFoundError:
             print("User DB not found, creating one now")
-            open("data/users.json", 'x')
+            open("data/users.json", 'x').close()
         except json.decoder.JSONDecodeError:
             print("User DB is empty or corrupted, reinitializing")
             print("Reinitialization complete")
+            self.users = []
 
     def _read_from_wallets_db(self):
         """ Function to read from wallets db """
@@ -213,11 +208,12 @@ class App:
         # Load in the wallets DB, create it if it doesn't exist
         try:
             wallets_fr = open("data/wallets.json", 'r')
-            self.wallets = json.load(wallets_fr)
+            wallet_dicts = json.load(wallets_fr)
+            self.wallets = [Wallet(**wallet_dict) for wallet_dict in wallet_dicts]
             print("Wallet DB loaded successfully")
         except FileNotFoundError:
             print("Wallets DB not found, creating one now")
-            open("data/wallets.json", 'x')
+            open("data/wallets.json", 'x').close()
         except json.decoder.JSONDecodeError:
             print("Wallets DB is empty or corrupted, reinitializing")
             print("Reinitialization complete")
@@ -228,11 +224,12 @@ class App:
         # Load in the Transactions DB, create it if it doesn't exist
         try:
             transaction_fr = open("data/transactions.json", 'r')
-            self.transactions = json.load(transaction_fr)
+            transaction_dicts = json.load(transaction_fr)
+            self.transactions = [Transaction(**transaction_dict) for transaction_dict in transaction_dicts]
             print("Transactions DB loaded successfully")
         except FileNotFoundError:
             print("Transactionss DB not found, creating one now")
-            open("data/transactionss.json", 'x')
+            open("data/transactionss.json", 'x').close()
         except json.decoder.JSONDecodeError:
             print("Transactionss DB is empty or corrupted, reinitializing")
             print("Reinitialization complete")
@@ -240,113 +237,102 @@ class App:
     def _deposit(self):
         sleep(1)
         amount = input("\nHow much would you like to deposit? ")
-        for wallet in self.wallets:
-            if self.wallet["wallet_id"] == wallet["wallet_id"]:
-                wallet["balance"] += int(amount)
-                sleep(1)
-                print(f"You have deposited #{amount}. Balance = {wallet['balance']}")
-                self.wallet = wallet
-                self._create_transaction(self.user["username"], amount, "deposit" )
+        if self.wallet.deposit(amount):
+            for wallet in self.wallets:
+                if wallet.wallet_id == self.wallet.wallet_id:
+                    wallet.balance = self.wallet.balance
+                    break
 
-                self._write_to_db(self.transactions_db_path, self.transactions)
-                self._write_to_db(self.wallet_db_path, self.wallets)
-                self._read_from_transactions_db()
-                self._read_from_wallets_db()
+        self._create_transaction(self.user.username, amount, "deposit")
+
+        self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
+        self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
+        self._read_from_transactions_db()
+        self._read_from_wallets_db()
+        print(f"You have deposited #{amount}. Balance = {self.wallet.balance}")
 
     def _withdraw(self, amount):
         """Function to withdraw money"""
         sleep(0.5)
-        for wallet in self.wallets:
-            if self.wallet["wallet_id"] == wallet["wallet_id"]:
-                if wallet["balance"] >= int(amount):
-                    wallet["balance"] -= int(amount)
-                    sleep(1)
-                    print(f"Your new balance is: {wallet['balance']}")
-                    self.wallet = wallet
-                    self._create_transaction(self.user["username"], amount, "withdrawal" )
-
-                    self._write_to_db(self.wallet_db_path, self.wallets)
-                    self._write_to_db(self.transactions_db_path, self.transactions)
-                    self._read_from_transactions_db()
-                    self._read_from_wallets_db()
-                    return
-                else:
-                    print("Insufficient Funds")
-                    return
-        print("Something went wrong with your wallet")
+        amount = float(amount)
+        
+        if self.wallet.withdraw(amount):
+            for wallet in self.wallets:
+                if wallet.wallet_id == self.wallet.wallet_id:
+                    wallet.balance = self.wallet.balance
+                    break
+            self._create_transaction(self.user.username, amount, "withdrawal")
+            self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
+            self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
+            self._read_from_transactions_db()
+            self._read_from_wallets_db()
+            print(f"Your new balance is: {self.wallet.balance}")
+        else:
+            print("Insufficient Funds")
 
     def _send_money(self, amount, receiver):
         """Function to send money to another user"""
 
-        # Check if user has enough to send
-        for user in self.users:
-            if user["username"] == self.user["username"]:
-                for wallet in self.wallets:
-                    if wallet["wallet_id"] == user["wallet_id"]:
-                        if wallet["balance"] >= int(amount):
+        amount = float(amount)
 
-                            # Actual sending
-                            for user2 in self.users:
-                                if user2["username"] == receiver:
-                                    for wallet2 in self.wallets:
-                                        if wallet2["wallet_id"] == user2["wallet_id"]:
-                                            wallet2["balance"] += int(amount)
-                                            wallet["balance"] -= int(amount)
-                                            print(f"Money sent to {receiver}")
-                                            sleep(1)
-                                            self.wallet = wallet
+        if not amount:
+            print("invalid amount")
+            return
+        
+        if self.wallet.balance >= amount:
+            for user in self.users:
+                if user.username == receiver:
+                    for wallet in self.wallets:
+                        if wallet.user_id == user.user_id:
+                            wallet.deposit(amount)
+                            self.wallet.withdraw(amount)
+                            print(self.wallet)
+                            print(self.wallets)
 
-                                            self._create_transaction(self.user["username"], amount, "debit-transfer", user2["username"])
-                                            self._create_transaction(self.user["username"], amount, "credit-transfer", user2["username"])
+                            self._create_transaction(self.user.username, amount, "debit-transfer", user.username)
+                            self._create_transaction(self.user.username, amount, "credit-transfer", user.username)
 
-                                            self._write_to_db(self.transactions_db_path, self.transactions)
+                            self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
 
-                                            self._write_to_db(self.wallet_db_path, self.wallets)
-                                            self._read_from_wallets_db()
-                                            self._read_from_transactions_db()
-                                            return
-                                        
-                            print("it seems the user you're trying to send to does not exist")
+                            self._write_to_db(self.wallet_db_path, [w.to_dict() for w in self.wallets])
+
+                            self._read_from_wallets_db()
+                            self._read_from_transactions_db()
+                            print(f"Money sent to {receiver}")
                             return
-                        else:
-                            print("Insufficient Funds")
-                            return
+            print("It seems the user you're trying to send to does not exist")
+        else:
+            print("Insufficient Funds")
 
     def _view_balance(self):
         sleep(0.5)
-        print("\nYour account balance is: ", self.wallet["balance"])
+        print("\nYour account balance is: ", self.wallet.balance)
 
     def _view_transactions(self):
         """Functions to show all transactions"""
 
-        all_transactions = []
-
-        for t in self.transactions:
-            if t["sender"] == self.user["username"]:
-                all_transactions.append(t)
-            if t["receiver"] == self.user["username"] and t["type"] == 'credit-transfer':
-                all_transactions.append(t)
+        all_transactions = [t.to_dict() for t in self.transactions if t.sender == self.user.username or (t.receiver == self.user.username and t.Ttype == 'credit-transfer')]
         
         if not all_transactions:
             print("\nYou have no transactions yet")
             return
         sleep(1)
-        print(f"\nAll Transactions: {all_transactions}")
+        print(f"\nAll Transactions: {json.dumps(all_transactions, indent=4)}")
 
     def _view_profile(self):
         sleep(0.5)
-        print(f"My Profile: {self.user}")
+        print(f"My Profile: {json.dumps(self.user.to_dict(), indent=4)}")
 
     def _view_wallet(self):
         sleep(0.5)
-        print(f"My Wallet: {self.wallet}")   
+        print(f"My Wallet: {json.dumps(self.wallet.to_dict(), indent=4)}")
         
     def _view_single_transaction(self, id):
         for t in self.transactions:
-            if t["transaction_id"] == id:
-                print(f"Transaction: {t}")
+            if t.transaction_id == id:
+                print(f"Transaction: {json.dumps(t.to_dict(), indent=4)}")
                 return 
-        print("Transaction not found")        
+        print("Transaction not found")         
 
 
 if __name__ == '__main__':
