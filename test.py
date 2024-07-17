@@ -19,4 +19,3 @@ print(data)
 fw = open("data/users.json", 'w')
 fw.write(json.dumps(data, indent=4))
 fw.close()
-

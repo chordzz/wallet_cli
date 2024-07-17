@@ -36,4 +36,4 @@ class Wallet:
             return False
 
     def __repr__(self):
-        return (f"Wallet(wallet_id={self.wallet_id}, balance={self.balance}, user_id={self.user_id}, created_at={self.created_at}, updated_at={self.updated_at})")
+        return f"Wallet(wallet_id={self.wallet_id}, balance={self.balance}, user_id={self.user_id}, created_at={self.created_at}, updated_at={self.updated_at})"

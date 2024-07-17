@@ -7,11 +7,13 @@ from datetime import datetime
 import json
 from time import sleep
 
+
 class App:
     """Main App flow"""
 
     def __init__(self) -> None:
 
+        self.app_active = None
         self.users = []
         self.wallets = []
         self.transactions = []
@@ -22,7 +24,6 @@ class App:
         self.user_db_path = "data/users.json"
         self.wallet_db_path = "data/wallets.json"
         self.transactions_db_path = "data/transactions.json"
-        
 
     def run_app(self):
         """Start main app"""
@@ -37,7 +38,7 @@ class App:
         self._read_from_wallets_db()
         self._read_from_transactions_db()
         print("App Setup Complete")
-  
+
         # Start main app flow
         while self.app_active:
             sleep(1)
@@ -68,7 +69,7 @@ class App:
             else:
                 print("\nByeeeeeee!!!")
                 return
-                         
+
     def _authenticate_user(self, input_username, input_password):
         """Authentication function for users"""
         for user in self.users:
@@ -86,6 +87,13 @@ class App:
         email = input("Enter your email address: ")
         phone = input("Enter your phone number: ")
         username = input("Enter your username: ")
+        try:
+            with open(self.user_db_path, 'r') as file:
+                if any(user_['username'] == username for user_ in json.load(file)):
+                    print('Username already existed')
+                    return
+        except json.JSONDecodeError:
+            pass
         password = input("Enter your password: ")
         user_id = random.random() * 999
         created_at = datetime.now().isoformat()
@@ -143,15 +151,15 @@ class App:
         while logged_in:
             print("\n")
             user_input = input("1. Deposit Money \n"
-                            "2. Withdraw Money \n"
-                            "3. Send Money \n"
-                            "4. Check Balance \n"
-                            "5. My Transactions \n"
-                            "6. My wallet\n"
-                            "7. My Profile\n"
-                            "8. View single transaction\n"
-                            "9. Sign out \n"
-                            )
+                               "2. Withdraw Money \n"
+                               "3. Send Money \n"
+                               "4. Check Balance \n"
+                               "5. My Transactions \n"
+                               "6. My wallet\n"
+                               "7. My Profile\n"
+                               "8. View single transaction\n"
+                               "9. Sign out \n"
+                               )
             if user_input == '1':
                 self._deposit()
             elif user_input == '2':
@@ -159,8 +167,12 @@ class App:
                 self._withdraw(amount)
             elif user_input == '3':
                 receiver = input("Enter the username of the receiver: ")
-                amount = input("Enter the amount to you want to send: ")
-                self._send_money(amount, receiver)
+                # catch non integer values
+                try:
+                    amount = input("Enter the amount to you want to send: ")
+                    self._send_money(amount, receiver)
+                except ValueError:
+                    print('Ensure all values are in numbers')
             elif user_input == '4':
                 self._view_balance()
             elif user_input == '5':
@@ -170,15 +182,21 @@ class App:
             elif user_input == '7':
                 self._view_profile()
             elif user_input == '8':
-                id = input("Enter transaction ID: ")
-                self._view_single_transaction(float(id))
+                # stopped from throwing errors for invalid ID number
+                try:
+                    id = input("Enter transaction ID: ")
+                    self._view_single_transaction(float(id))
+                except ValueError:
+                    print('Incorrect transaction number')
+                    continue
+
             elif user_input == '9':
                 print("User Logged out")
                 logged_in = False
             else:
                 print("\ninvalid input\n")
                 sleep(0.5)
-      
+
     def _write_to_db(self, path, data):
         """Function to write to any DB"""
         w = open(path, 'w')
@@ -255,7 +273,7 @@ class App:
         """Function to withdraw money"""
         sleep(0.5)
         amount = float(amount)
-        
+
         if self.wallet.withdraw(amount):
             for wallet in self.wallets:
                 if wallet.wallet_id == self.wallet.wallet_id:
@@ -278,31 +296,36 @@ class App:
         if not amount:
             print("invalid amount")
             return
-        
-        if self.wallet.balance >= amount:
-            for user in self.users:
-                if user.username == receiver:
-                    for wallet in self.wallets:
-                        if wallet.user_id == user.user_id:
-                            wallet.deposit(amount)
-                            self.wallet.withdraw(amount)
-                            print(self.wallet)
-                            print(self.wallets)
 
-                            self._create_transaction(self.user.username, amount, "debit-transfer", user.username)
-                            self._create_transaction(self.user.username, amount, "credit-transfer", user.username)
-
-                            self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
-
-                            self._write_to_db(self.wallet_db_path, [w.to_dict() for w in self.wallets])
-
-                            self._read_from_wallets_db()
-                            self._read_from_transactions_db()
-                            print(f"Money sent to {receiver}")
-                            return
-            print("It seems the user you're trying to send to does not exist")
+        # stop being able to send money to self, if sender is same as receiver
+        if self.user.username == receiver:
+            print("Sorry you cannot send money to yourself.")
+            return
         else:
-            print("Insufficient Funds")
+            if self.wallet.balance >= amount:
+                for user in self.users:
+                    if user.username == receiver:
+                        for wallet in self.wallets:
+                            if wallet.user_id == user.user_id:
+                                wallet.deposit(amount)
+                                self.wallet.withdraw(amount)
+                                print(self.wallet)
+                                print(self.wallets)
+
+                                self._create_transaction(self.user.username, amount, "debit-transfer", user.username)
+                                self._create_transaction(self.user.username, amount, "credit-transfer", user.username)
+
+                                self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
+
+                                self._write_to_db(self.wallet_db_path, [w.to_dict() for w in self.wallets])
+
+                                self._read_from_wallets_db()
+                                self._read_from_transactions_db()
+                                print(f"Money sent to {receiver}")
+                                return
+                print("It seems the user you're trying to send to does not exist")
+            else:
+                print("Insufficient Funds")
 
     def _view_balance(self):
         sleep(0.5)
@@ -311,8 +334,9 @@ class App:
     def _view_transactions(self):
         """Functions to show all transactions"""
 
-        all_transactions = [t.to_dict() for t in self.transactions if t.sender == self.user.username or (t.receiver == self.user.username and t.Ttype == 'credit-transfer')]
-        
+        all_transactions = [t.to_dict() for t in self.transactions if t.sender == self.user.username or (
+                    t.receiver == self.user.username and t.Ttype == 'credit-transfer')]
+
         if not all_transactions:
             print("\nYou have no transactions yet")
             return
@@ -326,13 +350,13 @@ class App:
     def _view_wallet(self):
         sleep(0.5)
         print(f"My Wallet: {json.dumps(self.wallet.to_dict(), indent=4)}")
-        
+
     def _view_single_transaction(self, id):
         for t in self.transactions:
             if t.transaction_id == id:
                 print(f"Transaction: {json.dumps(t.to_dict(), indent=4)}")
-                return 
-        print("Transaction not found")         
+                return
+        print("Transaction not found")
 
 
 if __name__ == '__main__':
