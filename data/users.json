@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Cooper Sheldon",
+        "email": "shelly",
+        "phone": "0918273",
+        "username": "shelly",
+        "password": "123",
+        "user_id": 982.7708545743601,
+        "created_at": "2024-07-17T13:04:10.221893",
+        "wallet_id": 248.8853566339069
+    },
+    {
+        "name": "Satoru Gojo",
+        "email": "gs@ure.com",
+        "phone": "129032",
+        "username": "gojo",
+        "password": "321",
+        "user_id": 781.9321879346858,
+        "created_at": "2024-07-17T13:05:00.114276",
+        "wallet_id": 260.0219543644135
+    },
+    {
+        "name": "Hyuga Neji",
+        "email": "hfd",
+        "phone": "21211313",
+        "username": "neji",
+        "password": "123",
+        "user_id": 716.3184532736965,
+        "created_at": "2024-07-17T13:22:30.540351",
+        "wallet_id": 135.72402265270972
+    }
+]
