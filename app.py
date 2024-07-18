@@ -7,7 +7,6 @@ from datetime import datetime
 import json
 from time import sleep
 
-
 class App:
     """Main App flow"""
 
