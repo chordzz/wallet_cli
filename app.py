@@ -86,17 +86,7 @@ class App:
         email = input("Enter your email address: ")
         phone = input("Enter your phone number: ")
 
-        '''
-        # check if username already existed in json file
-        username = input("Enter your username: ")
-        try:
-            with open(self.user_db_path, 'r') as file:
-                if any(user_['username'] == username for user_ in json.load(file)):
-                    print('Username already existed')
-                    return
-        except json.JSONDecodeError:
-            pass
-        '''
+        # check if a username exist to stop it from being created again.
         username = input('Enter your username: ')
         for user in self.users:
             if user.username == username:
