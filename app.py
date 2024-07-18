@@ -87,6 +87,7 @@ class App:
         email = input("Enter your email address: ")
         phone = input("Enter your phone number: ")
 
+        '''
         # check if username already existed in json file
         username = input("Enter your username: ")
         try:
@@ -96,6 +97,12 @@ class App:
                     return
         except json.JSONDecodeError:
             pass
+        '''
+        username = input('Enter your username: ')
+        for user in self.users:
+            if user.username == username:
+                print('User already existed')
+            return
 
         password = input("Enter your password: ")
         user_id = random.random() * 999
@@ -128,21 +135,24 @@ class App:
             print("Error creating user, please try again")
             return
         else:
-            try:
-                self.wallet = self._create_wallet(self.user.user_id)
-            except ValueError:
-                print("Error creating wallet, please try again")
-            else:
-                self.user.set_wallet_id(self.wallet.wallet_id)
-                self.wallets.append(self.wallet)
-                self.users.append(self.user)
+            if self.user:
+                try:
+                    self.wallet = self._create_wallet(self.user.user_id)
+                except ValueError:
+                    print("Error creating wallet, please try again")
+                else:
+                    self.user.set_wallet_id(self.wallet.wallet_id)
+                    self.wallets.append(self.wallet)
+                    self.users.append(self.user)
 
-                self._write_to_db(self.user_db_path, [user.to_dict() for user in self.users])
-                self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
+                    self._write_to_db(self.user_db_path, [user.to_dict() for user in self.users])
+                    self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
 
-                print("User created successfully")
-                print("Wallet created successfully")
-                print("Signup Successful")
+                    print("User created successfully")
+                    print("Wallet created successfully")
+                    print("Signup Successful")
+                    return
+            return
 
     def _sign_in_flow(self):
         """Function with the flow for signing in"""
