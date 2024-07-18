@@ -91,7 +91,7 @@ class App:
         for user in self.users:
             if user.username == username:
                 print('User already existed')
-            return
+                return
 
         password = input("Enter your password: ")
         user_id = random.random() * 999
@@ -117,7 +117,6 @@ class App:
 
     def _sign_up_flow(self):
         """ The signup process flow of the app"""
-
         try:
             self.user = self._create_user()
         except ValueError:
@@ -254,39 +253,52 @@ class App:
 
     def _deposit(self):
         sleep(1)
+
         amount = input("\nHow much would you like to deposit? ")
-        if self.wallet.deposit(amount):
-            for wallet in self.wallets:
-                if wallet.wallet_id == self.wallet.wallet_id:
-                    wallet.balance = self.wallet.balance
-                    break
+        # catch errors for invalid amount to deposit, or value contain text
+        try:
+            if self.wallet.deposit(amount):
+                for wallet in self.wallets:
+                    if wallet.wallet_id == self.wallet.wallet_id:
+                        wallet.balance = self.wallet.balance
+                        break
 
-        self._create_transaction(self.user.username, amount, "deposit")
+            self._create_transaction(self.user.username, amount, "deposit")
 
-        self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
-        self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
-        self._read_from_transactions_db()
-        self._read_from_wallets_db()
-        print(f"You have deposited #{amount}. Balance = {self.wallet.balance}")
+            self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
+            self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
+            self._read_from_transactions_db()
+            self._read_from_wallets_db()
+            print(f"You have deposited #{amount}. Balance = {self.wallet.balance}")
+
+        except ValueError:
+            print('Make sure the amount doesnt contain text')
+            pass
 
     def _withdraw(self, amount):
         """Function to withdraw money"""
         sleep(0.5)
-        amount = float(amount)
 
-        if self.wallet.withdraw(amount):
-            for wallet in self.wallets:
-                if wallet.wallet_id == self.wallet.wallet_id:
-                    wallet.balance = self.wallet.balance
-                    break
-            self._create_transaction(self.user.username, amount, "withdrawal")
-            self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
-            self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
-            self._read_from_transactions_db()
-            self._read_from_wallets_db()
-            print(f"Your new balance is: {self.wallet.balance}")
+        try:
+            float(amount)
+        except ValueError:
+            print("Amount should be a valid number")
         else:
-            print("Insufficient Funds")
+            amount = float(amount)
+            if self.wallet.withdraw(amount):
+                for wallet in self.wallets:
+                    if wallet.wallet_id == self.wallet.wallet_id:
+                        wallet.balance = self.wallet.balance
+                        break
+                self._create_transaction(self.user.username, amount, "withdrawal")
+                self._write_to_db(self.wallet_db_path, [wallet.to_dict() for wallet in self.wallets])
+                self._write_to_db(self.transactions_db_path, [t.to_dict() for t in self.transactions])
+                self._read_from_transactions_db()
+                self._read_from_wallets_db()
+                print(f"Your new balance is: {self.wallet.balance}")
+            else:
+                print("Insufficient Funds")
+
 
     def _send_money(self, amount, receiver):
         """Function to send money to another user"""
@@ -309,8 +321,8 @@ class App:
                             if wallet.user_id == user.user_id:
                                 wallet.deposit(amount)
                                 self.wallet.withdraw(amount)
-                                print(self.wallet)
-                                print(self.wallets)
+                                # print(self.wallet)
+                                # print(self.wallets)
 
                                 self._create_transaction(self.user.username, amount, "debit-transfer", user.username)
                                 self._create_transaction(self.user.username, amount, "credit-transfer", user.username)
