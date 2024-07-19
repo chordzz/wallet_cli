@@ -90,7 +90,7 @@ class App:
         username = input('Enter your username: ')
         for user in self.users:
             if user.username == username:
-                print('User already existed')
+                print('User already exists')
                 return
 
         password = input("Enter your password: ")
@@ -321,8 +321,11 @@ class App:
                             if wallet.user_id == user.user_id:
                                 wallet.deposit(amount)
                                 self.wallet.withdraw(amount)
-                                # print(self.wallet)
-                                # print(self.wallets)
+                               
+                                for mywallet in self.wallets:
+                                    if mywallet.wallet_id == self.wallet.wallet_id:
+                                        mywallet.balance = self.wallet.balance
+                    
 
                                 self._create_transaction(self.user.username, amount, "debit-transfer", user.username)
                                 self._create_transaction(self.user.username, amount, "credit-transfer", user.username)
