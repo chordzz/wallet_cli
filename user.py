@@ -1,6 +1,3 @@
-import random
-from datetime import datetime
-
 class User:
     """A class to represent a single user in the system"""
 
@@ -32,5 +29,5 @@ class User:
         }
 
     def __repr__(self):
-        return (f"User(user_id={self.user_id}, username={self.username}, email={self.email}, phone={self.phone}, name={self.name}, created_at={self.created_at}, status={self.status})")
+        return f"User(user_id={self.user_id}, username={self.username}, email={self.email}, phone={self.phone}, name={self.name}, created_at={self.created_at}, status={self.status})"
         
