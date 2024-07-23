@@ -36,6 +36,7 @@ class App:
         self._read_from_users_db()
         self._read_from_wallets_db()
         self._read_from_transactions_db()
+        sleep(1)
         print("App Setup Complete")
 
         # Start main app flow
@@ -47,7 +48,16 @@ class App:
             print("\nEnter the corresponding numbers to perform an action.")
             user_input = input("1. Create Account\n"
                                "2. Sign-in to your Account\n"
-                               "3. Exit App \n"
+                               "3. Deposit Money \n"
+                               "4. Withdraw Money \n"
+                               "5. Send Money \n"
+                               "6. Check Balance \n"
+                               "7. My Transactions \n"
+                               "8. My wallet\n"
+                               "9. My Profile\n"
+                               "10. View single transaction\n"
+                               "11. Sign out \n"
+                               "12. Exit App \n"
                                )
             if user_input == '1':
                 self._sign_up_flow()
@@ -64,10 +74,14 @@ class App:
                     self.user = active_user[0]
                     self.wallet = active_user[1]
                     self._sign_in_flow()
-
-            else:
+            elif user_input == '12':
                 print("\nByeeeeeee!!!")
                 return
+
+            elif int(user_input) in range(3, 12):
+                print("\nYou need to be logged in to perform this action")
+            else:
+                print("\nInvalid Input")
 
     def _authenticate_user(self, input_username, input_password):
         """Authentication function for users"""
@@ -191,6 +205,8 @@ class App:
 
             elif user_input == '9':
                 print("User Logged out")
+                self.user = {}
+                self.wallet = {}
                 logged_in = False
             else:
                 print("\ninvalid input\n")
@@ -298,7 +314,6 @@ class App:
                 print(f"Your new balance is: {self.wallet.balance}")
             else:
                 print("Insufficient Funds")
-
 
     def _send_money(self, amount, receiver):
         """Function to send money to another user"""
