@@ -12,8 +12,8 @@ paths = {
     "send": wallet_view.send,
     "balance": wallet_view.view_balance,
     "transactions": transaction_view.view_transactions,
-    "transaction/single": transaction_view.view_single_transaction,
-    "profile": user_view.user,
     "wallet": wallet_view.view_wallet,
+    "profile": user_view.user,
+    "transaction/single": transaction_view.view_single_transaction,
     "signout": user_view.signout
 }

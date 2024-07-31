@@ -5,26 +5,20 @@ from urls import paths
 
 def main():
     active = True
-    # user_db_path = "data/users.json"
-    # wallet_db_path = "data/wallets.json"
-    # transactions_db_path = "data/transactions.json"
-
-    sleep(1)
-    print("Welcome to your HB wallet...")
-    print("please wait while we setup your app")
-
-    # users = read_from_db(user_db_path)
-    # wallets = read_from_db(wallet_db_path)
-    # transactions = read_from_db(transactions_db_path)
 
     sleep(1)
     print("App Setup Complete")
 
     active_user = None
+    commands = {}
+    counter = 1
 
     while active:
-        sleep(1)
-
+       
+        for k, v in paths.items():
+            commands[counter] = k
+            counter += 1
+        
         print("\nEnter the corresponding numbers to perform an action.")
         user_input = input("1. Create Account\n"
                             "2. Sign-in to your Account\n"
@@ -39,66 +33,18 @@ def main():
                             "11. Sign out \n"
                             "12. Exit App \n"
                             )
-        
-        if user_input == '1':
-            paths['signup']()
-        elif user_input == '2':
-            if active_user:
-                print("You are logged in already, logout to perform this action")
-            else:
-                active_user = paths['signin']()
-        elif user_input == '3':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['deposit'](active_user['user_id'], active_user['username'])
-        elif user_input == '4':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['withdraw'](active_user['user_id'], active_user['username'])
-        elif user_input == '5':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['send'](active_user['user_id'], active_user['username'])
-        elif user_input == '6':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['balance'](active_user['user_id'])
-        elif user_input == '7':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['transactions'](active_user['username'])
-        elif user_input == '8':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['wallet'](active_user['user_id'])
-        elif user_input == '9':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['profile']()
-        elif user_input == '10':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                paths['transaction/single']()
-        elif user_input == '11':
-            if not active_user:
-                print("You need to be logged in to carry out this action")
-            else:
-                active_user = paths['signout']()
+        if user_input == '2':
+            active_user = paths[commands[int(user_input)]](active_user)
         elif user_input == '12':
-            print('Goodbye...')
             active = False
-            
-        
-
-
+        else:
+            try:
+                int(user_input)
+            except ValueError:
+                print('You need to enter a valid number')
+                continue
+            else:
+                paths[commands[int(user_input)]](active_user)
 
 if __name__ == '__main__':
     main()
