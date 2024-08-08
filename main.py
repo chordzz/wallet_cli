@@ -33,7 +33,7 @@ def main():
                             "11. Sign out \n"
                             "12. Exit App \n"
                             )
-        if user_input == '2':
+        if user_input == '2' or user_input == '11':
             active_user = paths[commands[int(user_input)]](active_user)
         elif user_input == '12':
             active = False

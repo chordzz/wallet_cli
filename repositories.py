@@ -4,10 +4,13 @@ from datetime import datetime
 
 from helpers import *
 from models import *
+from controller import setup_postgres
 
 user_db_path = "data/users.json"
 wallet_db_path = "data/wallets.json"
 transactions_db_path = "data/transactions.json"
+
+setup_postgres()
 
 @dataclass
 class UserRepository:
@@ -249,3 +252,377 @@ class TransactionRepository:
                 print(f"Transaction: {json.dumps(t, indent=4)}")
                 return
         print("Transaction not found")
+
+######################################## SQL ################################
+
+class UserRepositorySQL:
+
+    @staticmethod
+    def create_user(name, email, phone, username, password):
+        conn = connect_to_db()
+        check_user_exist_query = """
+            SELECT username FROM users WHERE username = %s
+        """
+
+        new_user_query = """
+            INSERT INTO users (name, email, phone, username, password, user_id, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
+        """
+
+        if conn:
+            with conn.cursor() as cur:
+                cur.execute(check_user_exist_query, (username,))
+                if cur.fetchone():
+                    print('User already exists, try signing up with different details')
+                    return
+            
+            user_id = random.random() * 999
+            created_at = datetime.now().isoformat()
+
+            wallet_repo = WalletRepositorySQL()
+
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(new_user_query, (name, email, phone, username, password, user_id, created_at))
+                    conn.commit()
+                    print("User created")
+                    wallet_repo.create_wallet(user_id)
+
+            except Exception as e:
+                print(f"Something went wrong while creating your user: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def authenticate_user(username, password):
+        conn = connect_to_db()
+        get_user_query = """
+            SELECT name, email, phone, username, user_id, created_at
+            FROM users WHERE username = %s and password = %s
+        """
+
+        if conn:
+            with conn.cursor() as cur:
+                cur.execute(get_user_query, (username, password))
+                user = cur.fetchone()
+                print(user)
+                if user:
+                    user = User(*user)
+                    print("Logged in successfully")
+                    return(user)
+                else:
+                    print('Invalid login credentials')
+
+    @staticmethod
+    def view_user(username):
+        conn = connect_to_db()
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+                    user = cur.fetchone()
+                    
+                    if user is None:
+                        print("user not found")
+                        return user
+                    print(user)
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+class WalletRepositorySQL:
+
+    @staticmethod
+    def create_wallet(user_id):
+        conn = connect_to_db()
+
+        new_wallet_query = """
+            INSERT INTO wallets (wallet_id, balance, created_at, updated_at, user_id)
+            VALUES (%s, %s, %s, %s, %s);
+        """
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    wallet_id = random.random() * 777
+                    balance = 0
+                    created_at = datetime.now().isoformat()
+                    updated_at = datetime.now().isoformat()
+
+                    cur.execute(new_wallet_query, (wallet_id, balance, created_at, updated_at, user_id))
+                    conn.commit()
+                    print("Wallet created")
+            except Exception as e:
+                print(f"Something went wrong while creating your wallet: {e}")
+                conn.rollback()
+                return
+            finally:
+                conn.close()
+
+    @staticmethod
+    def send(amount, receiver, sender):
+        conn = connect_to_db()
+        transaction_repo = TransactionRepositorySQL()
+
+        update_wallet_query = """
+            UPDATE wallets SET balance = %s WHERE user_id = %s;
+        """
+
+        get_receiver_query = """
+            SELECT name, email, phone, username, user_id, created_at
+            FROM users WHERE username = %s"""
+        
+        if receiver == sender.username:
+            print("You cannot send money to yourself")
+            return
+
+        if conn:
+            try:
+                amount = float(amount)  # Convert the amount to float
+                with conn.cursor() as cur:
+                    # Get receiver data
+                    cur.execute(get_receiver_query, (receiver,))
+                    receiver_data = cur.fetchone()
+                    if receiver_data is None:
+                        print("The user you are trying to send to does not exist")
+                        return
+                    if receiver_data:
+                        print(receiver_data)
+                        receiver_data = User(*receiver_data)
+
+                    # Get the sender's current balance
+                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (sender.user_id,))
+                    sender_balance = cur.fetchone()
+                    if sender_balance is None:
+                        print("Sender not found")
+                        return
+                    sender_balance = sender_balance[0]
+
+                    # Get the receiver's current balance
+                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (receiver_data.user_id,))
+                    receiver_balance = cur.fetchone()
+                    print(f"receiver balance: {receiver_balance[0]}")
+                    if receiver_balance is None:
+                        print("Receiver not found")
+                        return
+                    receiver_balance = receiver_balance[0]
+
+                    # Calculate new balances
+                    new_sender_balance = sender_balance - amount
+                    new_receiver_balance = receiver_balance + amount
+
+                    # Update sender's balance
+                    cur.execute(update_wallet_query, (new_sender_balance, sender.user_id))
+                    transaction_repo.create_transaction(sender.username, amount, 'debit-transfer', receiver_data.username)
+
+                    # Update receiver's balance
+                    cur.execute(update_wallet_query, (new_receiver_balance, receiver_data.user_id))
+                    transaction_repo.create_transaction(sender.username, amount, 'credit-transfer', receiver_data.username)
+
+                    # Commit the transaction
+                    conn.commit()
+
+                    print("Transaction completed successfully")
+
+            except ValueError:
+                print('Amount can only contain numbers')
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def deposit(amount, sender):
+        conn = connect_to_db()
+        transaction_repo = TransactionRepositorySQL()
+
+        update_wallet_query = """
+            UPDATE wallets SET balance = %s WHERE user_id = %s;
+        """
+
+        if conn:
+            try:
+                amount = float(amount)
+                with conn.cursor() as cur:
+                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (sender.user_id,))
+                    balance = cur.fetchone()
+                    if balance is None:
+                        print("Wallet not found")
+                        return
+                    balance = balance[0]
+
+                    new_balance = balance + amount
+
+                    cur.execute(update_wallet_query, (new_balance, sender.user_id))
+                    transaction_repo.create_transaction(sender.username, amount, 'deposit', "")
+                    # Commit the transaction
+                    conn.commit()
+
+                    print("Transaction completed successfully")
+
+            except ValueError:
+                print('Amount can only contain numbers')
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def withdraw(amount, sender):
+        conn = connect_to_db()
+        transaction_repo = TransactionRepositorySQL()
+
+        update_wallet_query = """
+            UPDATE wallets SET balance = %s WHERE user_id = %s;
+        """
+
+        if conn:
+            try:
+                amount = float(amount)
+                with conn.cursor() as cur:
+                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (sender.user_id,))
+                    balance = cur.fetchone()
+                    if balance is None:
+                        print("Wallet not found")
+                        return
+                    balance = balance[0]
+
+                    if balance < amount:
+                        print('insufficient funds')
+                        return
+                    
+                    new_balance = balance - amount
+
+                    cur.execute(update_wallet_query, (new_balance, sender.user_id))
+                    transaction_repo.create_transaction(sender.username, amount, 'withdraw', "")
+                    # Commit the transaction
+                    conn.commit()
+
+                    print("Transaction completed successfully")
+
+            except ValueError:
+                print('Amount can only contain numbers')
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def view_wallet(user):
+        conn = connect_to_db()
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM wallets WHERE user_id = %s", (user.user_id,))
+                    wallet = cur.fetchone()
+                    print(wallet)
+                    if wallet is None:
+                        print("Wallet not found")
+                        return wallet
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def view_balance(user):
+        conn = connect_to_db()
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (user.user_id,))
+                    balance = cur.fetchone()
+                    print(balance)
+                    if balance is None:
+                        print("balance not available")
+                        return balance
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+class TransactionRepositorySQL:
+
+    @staticmethod
+    def create_transaction(sender, amount, Ttype, receiver):
+        conn = connect_to_db()
+
+        new_transaction_query = """
+            INSERT INTO transactions (transaction_id, amount, created_at, trans_type, sender, receiver)
+            VALUES (%s, %s, %s, %s, %s, %s);
+        """
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    transaction_id = random.random() * 777
+                    created_at = datetime.now().isoformat()
+
+                    cur.execute(new_transaction_query, (transaction_id, amount, created_at, Ttype, sender, receiver))
+                    conn.commit()
+                    print("transaction created")
+            except Exception as e:
+                print(f"Something went wrong while creating your transaction: {e}")
+                conn.rollback()
+                return
+            finally:
+                conn.close()
+
+    @staticmethod
+    def view_transactions(username):
+        conn = connect_to_db()
+
+        search_query = """
+            SELECT * FROM transactions
+            WHERE (sender = %s and not trans_type = 'credit-transfer') or (receiver = %s and trans_type = 'credit-transfer')
+        """
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(search_query, (username, username))
+                    transactions = cur.fetchall()
+                    print(transactions)
+                    if transactions is None:
+                        print("You have not carried out any transactions")
+                        return transactions
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+    @staticmethod
+    def view_single_transaction(id):
+        conn = connect_to_db()
+
+        if conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT * FROM transactions WHERE transaction_id = %s", (id,))
+                    transaction = cur.fetchone()
+                    print(transaction)
+                    if transaction is None:
+                        print("Transaction not found")
+                        return transaction
+            except Exception as e:
+                print(f"Something went wrong: {e}")
+                conn.rollback()
+            finally:
+                conn.close()
+
+
+
+
+

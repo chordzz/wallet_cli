@@ -6,26 +6,15 @@ from datetime import datetime
 class User:
     """Class for representing a user entity as a model"""
 
-    def __init__(self, name='', email='', phone='', username='', password='', user_id='', created_at=''):
+    def __init__(self, name='', email='', phone='', username='', user_id='', created_at=''):
         self.name = name
         self.email = email
         self.phone = phone
         self.username = username
-        self.password = password
+        # self.password = password
         self.user_id = user_id
         self.created_at = created_at
 
-    # name: str
-    # email: str
-    # phone: str
-    # username: str
-    # password: str
-    # user_id: str
-    # # wallet_id: str
-    # created_at: str
-
-    # def set_wallet(self, wallet_id):
-    #     self.wallet_id = wallet_id
 
     def to_dict(self):
         return {
@@ -33,7 +22,7 @@ class User:
             "email": self.email,
             "phone": self.phone,
             "username": self.username,
-            "password": self.password,
+            # "password": self.password,
             "user_id": self.user_id,
             # "wallet_id": self.wallet_id,
             "created_at": self.created_at
@@ -85,7 +74,6 @@ class Wallet:
             "updated_at": self.updated_at
         }
     
-
 @dataclass
 class Transaction:
     """A class to represent a single transaction in the system"""
