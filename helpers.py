@@ -45,7 +45,6 @@ def connect_to_db():
         print("Unable to connect to the database")
         print(e)
 
-
 def check_table(table_name):
     conn = connect_to_db()
     

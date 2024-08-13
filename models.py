@@ -6,12 +6,12 @@ from datetime import datetime
 class User:
     """Class for representing a user entity as a model"""
 
-    def __init__(self, name='', email='', phone='', username='', user_id='', created_at=''):
+    def __init__(self, name='', email='', phone='', username='', password='', user_id='', created_at=''):
         self.name = name
         self.email = email
         self.phone = phone
         self.username = username
-        # self.password = password
+        self.password = password
         self.user_id = user_id
         self.created_at = created_at
 
@@ -22,7 +22,7 @@ class User:
             "email": self.email,
             "phone": self.phone,
             "username": self.username,
-            # "password": self.password,
+            "password": self.password,
             "user_id": self.user_id,
             # "wallet_id": self.wallet_id,
             "created_at": self.created_at
@@ -32,7 +32,7 @@ class User:
 class Wallet:
     """A class to represent a single wallet in the system"""
 
-    def __init__(self, wallet_id='', balance=0, user_id='', created_at='', updated_at=''):
+    def __init__(self, wallet_id='', balance=0, created_at='', updated_at='', user_id=''):
         self.wallet_id = wallet_id
         self.balance = balance
         self.user_id = user_id
@@ -78,13 +78,13 @@ class Wallet:
 class Transaction:
     """A class to represent a single transaction in the system"""
 
-    transaction_id: str
-    created_at: str
-    sender: str
-    receiver: str
-    amount: float
-    Ttype: str
-
+    def __init__(self, transaction_id='', amount=0.0, created_at='', Ttype='', sender='', receiver=''):
+        self.transaction_id = transaction_id
+        self.created_at = created_at
+        self.sender = sender
+        self.receiver = receiver
+        self.amount = amount
+        self.Ttype = Ttype
 
     def to_dict(self):
         return {
