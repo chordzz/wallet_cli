@@ -1,5 +1,6 @@
 import json
 from psycopg2 import connect, sql
+import hashlib
 
 
 ################### FILE DB ###########################
@@ -27,6 +28,13 @@ def write_to_db(path, data):
 
 
 ################ POSTGRESQL ################################
+
+
+def hash_password(password):
+   password_bytes = password.encode('utf-8')
+   hash_object = hashlib.sha256(password_bytes)
+   return hash_object.hexdigest()
+
 
 connection_parameters = {
     "database":"wallet-cli-ai",

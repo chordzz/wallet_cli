@@ -19,7 +19,6 @@ def setup_postgres():
 
     wallets_table_schema = [
         ("wallet_id", "VARCHAR"),
-        ("balance", "FLOAT"),
         ("created_at", "TIMESTAMP"),
         ("updated_at", "TIMESTAMP"),
         ("user_id", "VARCHAR"),   

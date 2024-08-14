@@ -1,5 +1,5 @@
 from repositories import *
-
+from helpers import hash_password
 from models import *
 
 class UserView:
@@ -19,7 +19,7 @@ class UserView:
             email = input("Enter your email address: ")
             phone = input("Enter your phone number: ")
             username = input('Enter your username: ')
-            password = input("Enter your password: ")
+            password = hash_password(input("Enter your password: "))
             user_id = random.random() * 999
             created_at = datetime.now().isoformat()
 
@@ -53,7 +53,7 @@ class UserView:
             return active_user
         else:
             username = input("Enter your username: ")
-            password = input("Enter your password: ")
+            password = hash_password(input("Enter your password: "))
 
             if self.user_repo.signin_user(username, password):
                 print("Login successful")
@@ -81,6 +81,7 @@ class WalletView:
     def __init__(self):
         self.wallet_repo = WalletRepositorySQL()
         self.transaction_view = TransactionView()
+        self.user_repo = UserRepositorySQL()
 
     def view_wallet(self, active_user):
         if not active_user:
@@ -99,14 +100,23 @@ class WalletView:
         balance = self.wallet_repo.get_wallet_balance(wallet)
         print(balance)
         
-
     def send(self, active_user):
         if not active_user:
             print("You need to be logged in to carry out this action")
             return
-        receiver = input('Who would you like to transfer to? ')
+        receiver_username = input('Who would you like to transfer to? ')
         amount = input('How much do you want to send? ')
-        self.wallet_repo.send(amount, receiver, active_user)
+
+        receiver = self.user_repo.get_user_by_username(receiver_username)
+        if receiver is None:
+            print("The user you're trying to send to does not exist")
+            return
+        
+        receiver_wallet = self.wallet_repo.get_wallet_by_user_id(receiver.user_id)
+        sender_wallet = self.wallet_repo.get_wallet_by_user_id(active_user.user_id)
+
+        self.transaction_view.create_transaction(amount, 'credit-transfer', sender_wallet.wallet_id, receiver_wallet.wallet_id)
+        self.transaction_view.create_transaction(amount, 'debit-transfer', sender_wallet.wallet_id, receiver_wallet.wallet_id)
 
     def deposit(self, active_user):
         if not active_user:
@@ -158,9 +168,11 @@ class TransactionView:
 
         try:
             new_transaction = Transaction(transaction_id, amount, created_at, Ttype, sender, receiver)
-            self.transaction_repo.create_transaction(new_transaction)
-            print("Transaction successful")
-            return True
+            if self.transaction_repo.create_transaction(new_transaction):
+                print("Transaction successful")
+                return True
+            else:
+                return False
         except Exception as e:
             print(f"Transaction failed \n {e}")
             return None
@@ -181,5 +193,5 @@ class TransactionView:
             print("You need to be logged in to carry out this action")
             return
         transaction_id = input("Enter Transaction ID: ")
-        self.transaction_repo.view_single_transaction(transaction_id)
+        self.transaction_repo.get_transaction_by_id(transaction_id)
 

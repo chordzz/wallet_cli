@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from helpers import *
 from models import *
-from controller import setup_postgres
+from config import setup_postgres
 
 user_db_path = "data/users.json"
 wallet_db_path = "data/wallets.json"
@@ -407,81 +407,6 @@ class WalletRepositorySQL:
                 balance -= t.amount
         return balance
 
-    
-
-    @staticmethod
-    def send(amount, receiver, sender):
-        conn = connect_to_db()
-        transaction_repo = TransactionRepositorySQL()
-
-        update_wallet_query = """
-            UPDATE wallets SET balance = %s WHERE user_id = %s;
-        """
-
-        get_receiver_query = """
-            SELECT name, email, phone, username, user_id, created_at
-            FROM users WHERE username = %s"""
-        
-        if receiver == sender.username:
-            print("You cannot send money to yourself")
-            return
-
-        if conn:
-            try:
-                amount = float(amount)  # Convert the amount to float
-                with conn.cursor() as cur:
-                    # Get receiver data
-                    cur.execute(get_receiver_query, (receiver,))
-                    receiver_data = cur.fetchone()
-                    if receiver_data is None:
-                        print("The user you are trying to send to does not exist")
-                        return
-                    if receiver_data:
-                        print(receiver_data)
-                        receiver_data = User(*receiver_data)
-
-                    # Get the sender's current balance
-                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (sender.user_id,))
-                    sender_balance = cur.fetchone()
-                    if sender_balance is None:
-                        print("Sender not found")
-                        return
-                    sender_balance = sender_balance[0]
-
-                    # Get the receiver's current balance
-                    cur.execute("SELECT balance FROM wallets WHERE user_id = %s", (receiver_data.user_id,))
-                    receiver_balance = cur.fetchone()
-                    print(f"receiver balance: {receiver_balance[0]}")
-                    if receiver_balance is None:
-                        print("Receiver not found")
-                        return
-                    receiver_balance = receiver_balance[0]
-
-                    # Calculate new balances
-                    new_sender_balance = sender_balance - amount
-                    new_receiver_balance = receiver_balance + amount
-
-                    # Update sender's balance
-                    cur.execute(update_wallet_query, (new_sender_balance, sender.user_id))
-                    transaction_repo.create_transaction(sender.username, amount, 'debit-transfer', receiver_data.username)
-
-                    # Update receiver's balance
-                    cur.execute(update_wallet_query, (new_receiver_balance, receiver_data.user_id))
-                    transaction_repo.create_transaction(sender.username, amount, 'credit-transfer', receiver_data.username)
-
-                    # Commit the transaction
-                    conn.commit()
-
-                    print("Transaction completed successfully")
-
-            except ValueError:
-                print('Amount can only contain numbers')
-            except Exception as e:
-                print(f"Something went wrong: {e}")
-                conn.rollback()
-            finally:
-                conn.close()
-
 class TransactionRepositorySQL:
 
     @staticmethod
@@ -498,10 +423,12 @@ class TransactionRepositorySQL:
                 with conn.cursor() as cur:
                     cur.execute(new_transaction_query, (transaction.transaction_id, transaction.amount, transaction.created_at, transaction.Ttype, transaction.sender, transaction.receiver))
                     conn.commit()
+                    return True
             except Exception as e:
                 print(f"Something went wrong while creating your transaction: {e}")
+                print("Transaction failed")
                 conn.rollback()
-                return
+                return False
             finally:
                 conn.close()
 
@@ -535,15 +462,18 @@ class TransactionRepositorySQL:
                 conn.close()
 
     @staticmethod
-    def view_single_transaction(id):
+    def get_transaction_by_id(id):
         conn = connect_to_db()
+        query = """
+            SELECT * FROM transactions WHERE transaction_id = %s
+        """
 
         if conn:
             try:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT * FROM transactions WHERE transaction_id = %s", (id,))
+                    cur.execute(query, (id,))
                     transaction = cur.fetchone()
-                    print(transaction)
+                    
                     if transaction is None:
                         print("Transaction not found")
                         return transaction
